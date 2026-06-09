@@ -5,7 +5,7 @@ class MainScene extends Phaser.Scene {
 
     preload() {
         // TILEMAP
-        this.load.tilemapTiledJSON('level1', 'assets/maps/level1.json');
+        this.load.tilemapTiledJSON('level0', 'assets/maps/level0.json');
 
         // TILESETS
         this.load.image('platformTiles', 'assets/tiles/pixel-platformer.png');

@@ -253,6 +253,24 @@
                  "width":18.5,
                  "x":341.25,
                  "y":197.375
+                }, 
+                {
+                 "height":20.25,
+                 "id":9,
+                 "name":"Spawn",
+                 "opacity":1,
+                 "properties":[
+                        {
+                         "name":"type",
+                         "type":"string",
+                         "value":"PlayerSpawn"
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":21.5,
+                 "x":33.9166666666667,
+                 "y":179.208333333333
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -261,7 +279,7 @@
          "y":0
         }],
  "nextlayerid":5,
- "nextobjectid":9,
+ "nextobjectid":10,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.1",
@@ -307,8 +325,17 @@
          "tilewidth":18
         }, 
         {
+         "columns":16,
          "firstgid":405,
-         "source":"..\/..\/..\/..\/Industrial.tsx"
+         "image":"..\/..\/..\/..\/..\/..\/Downloads\/kenney_pixel-platformer-industrial-expansion\/Tilemap\/tilemap_packed.png",
+         "imageheight":126,
+         "imagewidth":288,
+         "margin":0,
+         "name":"Industrial",
+         "spacing":0,
+         "tilecount":112,
+         "tileheight":18,
+         "tilewidth":18
         }],
  "tilewidth":18,
  "type":"map",

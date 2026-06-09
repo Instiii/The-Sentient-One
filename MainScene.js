@@ -1,11 +1,20 @@
 class MainScene extends Phaser.Scene {
+    
+    
+
     constructor() {
         super('MainScene');
+
+        this.levelOrder = ['level1', 'level2', 'level3', 'level4'];
+        this.currentIndex = 0;
     }
 
     preload() {
         // TILEMAP
-        this.load.tilemapTiledJSON('level0', 'assets/maps/level0.json');
+        this.load.tilemapTiledJSON('level1', 'assets/maps/level1.json');
+        this.load.tilemapTiledJSON('level2', 'assets/maps/level2.json');
+        this.load.tilemapTiledJSON('level3', 'assets/maps/level3.json');
+        this.load.tilemapTiledJSON('level4', 'assets/maps/level4.json');
 
         // TILESETS
         this.load.image('platformTiles', 'assets/tiles/pixel-platformer.png');
@@ -14,8 +23,9 @@ class MainScene extends Phaser.Scene {
 
         // IMAGES
         this.load.image('player', 'assets/images/player.png');
-        this.load.image('jump', 'assets/images/player_jump.png');
-        this.load.image('donut', 'assets/images/donut.png');
+        this.load.image('lollipop', 'assets/images/lollipop.png');
+        this.load.image('pizza', 'assets/images/pizza.png');
+        this.load.image('whipped', 'assets/images/whipped.png');
         this.load.image('runEffect', 'assets/images/flame_01.png');
         this.load.image('jumpEffect', 'assets/images/muzzle_02.png');
         
@@ -25,10 +35,12 @@ class MainScene extends Phaser.Scene {
         
     }
 
-    create() {
+    create(data = {}) {
         // CREATE TILEMAP
+        const levelKey = data.levelKey || 'level1';
+        this.currentIndex = this.levelOrder.indexOf(levelKey);
         const map = this.make.tilemap({
-            key: 'level1'
+            key: levelKey
         });
 
         this.add.rectangle(0, 0, map.widthInPixels, map.heightInPixels, 0xffb36b).setOrigin(0);
@@ -48,11 +60,14 @@ class MainScene extends Phaser.Scene {
         // ENABLE PLATFORM COLLISION
         this.platformLayer.setCollisionByExclusion([-1]);
         this.deadlyLayer.setCollisionByExclusion([-1]);
-
+        
         // FIND PLAYER SPAWN
-        const spawnPoint = map.findObject(
-            'Player',
-            obj => obj.name === 'player_spawn'
+        const objectsLayer = map.getObjectLayer('Objects');
+        console.log(objectsLayer);
+        console.log(map.getObjectLayer('Objects').objects);
+
+        const spawnPoint = objectsLayer.objects.find(
+            obj => obj.properties?.find(p => p.name === 'type')?.value === 'PlayerSpawn'
         );
 
         this.spawnX = spawnPoint.x;
@@ -65,7 +80,7 @@ class MainScene extends Phaser.Scene {
             'player'
         );
 
-        this.player.setCollideWorldBounds(true);
+        //this.player.setCollideWorldBounds(true);
 
         // PLAYER COLLISION
         this.physics.add.collider(this.player, this.platformLayer);
@@ -74,6 +89,38 @@ class MainScene extends Phaser.Scene {
                 this.playerDie();
             }
         );
+
+        this.platformGroup = this.physics.add.group();
+        this.fallingPlatforms = [];
+
+        map.getObjectLayer('Objects').objects.forEach(obj => {
+
+            const type = obj.properties?.find(p => p.name === 'type')?.value;
+
+            // ── Only falling platforms ─────────────────────────────
+            if (type !== 'Falling') return;
+
+            const platform = this.add.rectangle(
+                obj.x + obj.width / 2,
+                obj.y + obj.height / 2,
+                obj.width,
+                obj.height,
+                0xC8A060
+            );
+
+            this.physics.add.existing(platform);
+            this.platformGroup.add(platform);
+
+            platform.body.setImmovable(true);
+            platform.body.setAllowGravity(false);
+
+            this.physics.add.collider(this.player, platform);
+
+            this.fallingPlatforms.push({
+                sprite: platform,
+                triggered: false
+            });
+        });
 
         // PARTICLES
         this.runParticles =  this.add.particles(-100, 0, 'runEffect', {
@@ -102,8 +149,8 @@ class MainScene extends Phaser.Scene {
         this.cameras.main.setZoom(2);
 
         // LIVES
-        this.lives = 3;
-        this.livesText = this.add.text (350, 240, 'Lives: 3 / 3', 
+        this.lives = this.scene.settings.data?.lives ?? 3;
+        this.livesText = this.add.text (350, 240, `Lives: ${this.lives} / 3`, 
             {
                 fontSize: '24px',
                 fill: '#fff4dd'
@@ -112,8 +159,8 @@ class MainScene extends Phaser.Scene {
         
 
         // SCORE
-        this.score = 0;
-        this.scoreText = this.add.text(350, 200, 'Score: 0', 
+        this.score = this.scene.settings.data?.score ?? 0;
+        this.scoreText = this.add.text(350, 200, `Score: ${this.score}`, 
             {
                 fontSize: '24px',
                 fill: '#2b2b2b'
@@ -125,13 +172,24 @@ class MainScene extends Phaser.Scene {
 
         this.collectibles = this.physics.add.group();
 
-        map.getObjectLayer('Collectibles').objects.forEach(obj => {
-            const item = this.collectibles.create(obj.x, obj.y, 'donut');
+        map.getObjectLayer('Objects').objects.forEach(obj => {
+            
+            const type = obj.properties?.find(p => p.name === 'type')?.value;
+            const value = obj.properties?.find(p => p.name === 'score')?.value ?? 1;
+
+            if(type !== 'Lollipop' && type !== 'Pizza' && type !== 'Whipped') return;
+
+            let texture = 'lollipop';
+            if (type === 'Pizza') texture = 'pizza';
+            if (type === 'Whipped') texture = 'whipped';
+
+            const item = this.collectibles.create(obj.x, obj.y, texture);
+
+            item.itemType = type;
+            item.value = value;
 
             item.body.setAllowGravity(false);
             item.body.setImmovable(true);
-            item.body.moves = false;
-            item.value = obj.value || 1;
         });
         
         this.physics.add.overlap(
@@ -139,24 +197,64 @@ class MainScene extends Phaser.Scene {
             this.collectibles,
             (player, item) => {
 
-                this.score += item.value;
+                if (item.itemType === 'Whipped') {
+                    this.lives = Math.min(this.lives + 1, 3);
+                    this.livesText.setText(`Lives: ${this.lives} / 3`);
+                } else {
+                    this.score += item.value;
+                    this.scoreText.setText(`Score: ${this.score}`);
+                }
+
                 item.destroy();
                 this.collectSound.play();
 
-                this.scoreText.setText('Score: ' + this.score);
             }
         );
 
 
-        map.getObjectLayer('EndFlag').objects.forEach(obj => {
+        map.getObjectLayer('Objects').objects.forEach(obj => {
+
+            if (obj.name !== 'Flag1') return;
 
             const flagZone = this.add.zone(obj.x, obj.y, obj.width, obj.height);
             this.physics.add.existing(flagZone, true);
 
             this.physics.add.overlap(this.player, flagZone, () => {
                 console.log("Touched Flag");
-                this.scene.start('Win');
+                const nextLevel = this.levelOrder[this.currentIndex + 1];
+
+                if (nextLevel) {
+                    this.scene.start('MainScene', { 
+                        levelKey: this.levelOrder[this.currentIndex+1],
+                        score: this.score,
+                        lives: this.lives
+                    });
+                } else {
+                    this.scene.start('Win', {
+                        score: this.score,
+                        lives: this.lives
+                    });
+                }
             });
+        });
+
+        this.fallingPlatforms.forEach(p => {
+
+            this.physics.add.collider(this.player, p.sprite, () => {
+
+                if (p.triggered) return;
+                p.triggered = true;
+
+                this.time.delayedCall(10, () => {
+
+                    p.sprite.body.setAllowGravity(true);
+                    p.sprite.body.setImmovable(false);
+                    p.sprite.setFillStyle(0xAA7030);
+
+                });
+
+            });
+
         });
 
         // CONTROLS

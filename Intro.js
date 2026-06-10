@@ -21,7 +21,11 @@ class Intro extends Phaser.Scene {
         }).setOrigin(0.5);
 
         this.input.keyboard.once('keydown-SPACE', () => {
-            this.scene.start('MainScene');
+            this.scene.start('MainScene', {
+                levelIndex: 0,
+                score: 0,  
+                lives: 3
+            });
         });
     }
 }

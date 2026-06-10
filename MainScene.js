@@ -32,6 +32,7 @@ class MainScene extends Phaser.Scene {
         //AUDIO
         this.load.audio('jumpSfx', 'assets/audio/jump.ogg');
         this.load.audio('collectSfx', 'assets/audio/collect.ogg');
+        this.load.audio('bgm', 'assets/audio/ambient.mp3');
         
     }
 
@@ -107,14 +108,14 @@ class MainScene extends Phaser.Scene {
                 obj.height,
                 0xC8A060
             );
+            platform.displayWidth = obj.width;
+            platform.displayHeight = obj.height;
 
-            this.physics.add.existing(platform);
+           this.physics.add.existing(platform);
+
             this.platformGroup.add(platform);
-
             platform.body.setImmovable(true);
             platform.body.setAllowGravity(false);
-
-            this.physics.add.collider(this.player, platform);
 
             this.fallingPlatforms.push({
                 sprite: platform,
@@ -142,11 +143,24 @@ class MainScene extends Phaser.Scene {
         // SOUNDS
         this.jumpSound = this.sound.add('jumpSfx');
         this.collectSound = this.sound.add('collectSfx');
+        this.music = this.sound.add('bgm', {
+            loop: true,
+            volume: 0.5
+        });
+        if (!this.sound.get('bgm') || !this.sound.get('bgm').isPlaying) {
+            this.music.play();
+        }
+
+        
 
         // CAMERA
         this.cameras.main.startFollow(this.player);
         this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
         this.cameras.main.setZoom(2);
+
+        this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+        this.player.setCollideWorldBounds(true);
+
 
         // LIVES
         this.lives = this.scene.settings.data?.lives ?? 3;
@@ -172,6 +186,7 @@ class MainScene extends Phaser.Scene {
 
         this.collectibles = this.physics.add.group();
 
+        //Loading collectibles and putting on map
         map.getObjectLayer('Objects').objects.forEach(obj => {
             
             const type = obj.properties?.find(p => p.name === 'type')?.value;
@@ -192,6 +207,7 @@ class MainScene extends Phaser.Scene {
             item.body.setImmovable(true);
         });
         
+        //Collecting items and updating score/lives
         this.physics.add.overlap(
             this.player,
             this.collectibles,
@@ -211,7 +227,7 @@ class MainScene extends Phaser.Scene {
             }
         );
 
-
+        //FLAG COLLISIONS
         map.getObjectLayer('Objects').objects.forEach(obj => {
 
             if (obj.name !== 'Flag1') return;
@@ -230,6 +246,7 @@ class MainScene extends Phaser.Scene {
                         lives: this.lives
                     });
                 } else {
+                    this.music.stop();
                     this.scene.start('Win', {
                         score: this.score,
                         lives: this.lives
@@ -238,21 +255,16 @@ class MainScene extends Phaser.Scene {
             });
         });
 
-        this.fallingPlatforms.forEach(p => {
+        //FALLING PLATFORMS COLLISION
+        this.physics.add.collider(this.player, this.platformGroup, (player, platform) => {
 
-            this.physics.add.collider(this.player, p.sprite, () => {
+            if (platform.triggered) return;
 
-                if (p.triggered) return;
-                p.triggered = true;
+            platform.triggered = true;
 
-                this.time.delayedCall(10, () => {
-
-                    p.sprite.body.setAllowGravity(true);
-                    p.sprite.body.setImmovable(false);
-                    p.sprite.setFillStyle(0xAA7030);
-
-                });
-
+            this.time.delayedCall(200, () => {
+                platform.body.setAllowGravity(true);
+                platform.body.setImmovable(false);
             });
 
         });
@@ -309,6 +321,7 @@ class MainScene extends Phaser.Scene {
 
         this.livesText.setText(`Lives: ${this.lives} / 3`);
         if (this.lives <= 0) {
+            this.music.stop();
             this.scene.start('Lose');
             return;
         }
